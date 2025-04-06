@@ -6,7 +6,7 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:49:14 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/02/02 07:14:29 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/06 18:40:10 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,8 @@ off_t	file_length(char *path)
 	}
 	return (buffer.st_size);
 }
+
+#include <string.h>
 
 void insert_bytes(t_elf_file *file, const char *new_bytes, size_t insert_offset, size_t insert_size, size_t allocated_size)
 {

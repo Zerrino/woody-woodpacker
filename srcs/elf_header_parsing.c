@@ -6,7 +6,7 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:53:13 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/02/02 17:55:14 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/06 18:26:51 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,7 +79,8 @@ void	ft_elf64(t_elf_file *file)
 	elf64_phdr_parse(file);
 	file->offset = file->elf64_ehdr->e_shoff;
 	elf64_shdr_parse(file);
-	ft_free_all(file);
+	elf64_woody(file);
+	//ft_free_all(file);
 }
 
 void	ft_elf32(t_elf_file *file)
@@ -124,7 +125,6 @@ int	elf_parsing(t_elf_file *file)
 	elf_set(file, 10, (void **)&buffer, 1);
 	//if (check_header(buffer) != 0)
 	//	return (1);
-	printf("here\n");
 	if (2)
 		ft_elf64(file);
 	else if (file->type_ehdr == 1)

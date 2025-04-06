@@ -6,7 +6,7 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/11 20:03:48 by alexafer          #+#    #+#             */
-/*   Updated: 2025/02/02 18:14:22 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/06 18:58:54 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,6 +71,8 @@ typedef struct elf_file
 	int			flag_p;
 	int			flag_m;
 
+	uint64_t	offset_insert;
+
 	Elf64_Ehdr	*elf64_ehdr;
 	Elf32_Ehdr	*elf32_ehdr;
 
@@ -126,8 +128,8 @@ int		ft_strcmp(const char *s1, const char *s2);
 void	elf64_phdr_parse(t_elf_file *file);
 void	create_new_file_from_map(t_elf_file *file);
 //void	elf_set_tamp(t_elf_file *file, int len, void *value, int end);
-uint64_t read_u64(uint8_t *data, int is_big_endian);
-uint16_t read_u16(uint8_t *data, int is_big_endian);
-uint32_t read_u32(uint8_t *data, int is_big_endian);
 void insert_bytes(t_elf_file *file, const char *new_bytes, size_t insert_offset, size_t insert_size, size_t allocated_size);
+void	elf64_woody(t_elf_file *file);
+uint64_t compute_p_align(uint64_t p_vaddr, uint64_t p_offset, uint64_t default_align);
+
 #endif

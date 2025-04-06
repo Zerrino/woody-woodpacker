@@ -6,7 +6,7 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:49:14 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/02/02 07:16:49 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/06 18:25:12 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,7 +36,6 @@ void	print_nm32(void *value)
 
 void	ft_free_all(t_elf_file *file)
 {
-	create_new_file_from_map(file);
 	if (file->lst_value)
 		ft_free_lst(file);
 	if (file->tmp)

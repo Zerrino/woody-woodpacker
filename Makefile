@@ -6,7 +6,7 @@
 #    By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/06 09:46:53 by zerrino           #+#    #+#              #
-#    Updated: 2025/02/02 17:51:17 by Zerrino          ###   ########.fr        #
+#    Updated: 2025/04/06 18:22:50 by Zerrino          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -36,6 +36,7 @@ SRC_FILES = utilitary.c\
 			elf64_symbol.c\
 			utilitary1.c\
 			utilitary2.c\
+			elf64_change.c\
 
 SRC_FILES_ASM = rotate.s
 
