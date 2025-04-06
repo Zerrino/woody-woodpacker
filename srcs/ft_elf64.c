@@ -12,6 +12,26 @@
 
 #include "../includes/ft_nm.h"
 
+uint64_t compute_p_align(uint64_t p_vaddr, uint64_t p_offset, uint64_t default_align)
+{
+	uint64_t diff = (p_vaddr > p_offset) ? (p_vaddr - p_offset) : (p_offset - p_vaddr);
+
+	if (diff == 0)
+		return default_align; // Aucun décalage, on retourne l'alignement par défaut.
+
+	// Le calcul suivant retourne le plus petit diviseur puissance de 2 de diff,
+	// c'est-à-dire la plus grande puissance de 2 qui divise diff.
+	uint64_t computed_align = diff & (~(diff - 1));
+
+	// Optionnel : si vous voulez que l'alignement soit au moins default_align,
+	// et que default_align est une puissance de 2, vous pouvez forcer à choisir la valeur maximale.
+	if (computed_align < default_align)
+		computed_align = default_align;
+
+	// En tout cas, la condition p_vaddr % computed_align == p_offset % computed_align est satisfaite.
+	return computed_align;
+}
+
 static int	parse_section_headers(t_elf_file *file, int *sym_link)
 {
 	int	i;
@@ -20,38 +40,65 @@ static int	parse_section_headers(t_elf_file *file, int *sym_link)
 
 	sym_index = -1;
 	i = 0;
-	while (i < file->elf64_ehdr.e_shnum)
+	file->offset = file->elf64_ehdr->e_shoff;
+	while (i < file->elf64_ehdr->e_shnum)
 	{
-		elf_set(file, 4, &file->elf64_shdr[i].sh_name, 0);
-		elf_set(file, 4, &file->elf64_shdr[i].sh_type, 0);
-		elf_set(file, 8, &file->elf64_shdr[i].sh_flags, 0);
-		elf_set(file, 8, &file->elf64_shdr[i].sh_addr, 0);
-		elf_set(file, 8, &file->elf64_shdr[i].sh_offset, 0);
-		elf_set(file, 8, &file->elf64_shdr[i].sh_size, 0);
-		elf_set(file, 4, &file->elf64_shdr[i].sh_link, 0);
-		elf_set(file, 4, &file->elf64_shdr[i].sh_info, 0);
-		elf_set(file, 8, &file->elf64_shdr[i].sh_addralign, 0);
-		elf_set(file, 8, &file->elf64_shdr[i].sh_entsize, 0);
-		if (file->elf64_shdr[i].sh_type == SHT_SYMTAB)
+		elf_set(file, file->elf64_ehdr->e_shentsize , (void **)&file->elf64_shdr[i], 0);
+		file->elf64_shdr[i]->sh_offset += 0x38;
+		file->elf64_shdr[i]->sh_addr += 0x38;
+		file->elf64_shdr[i]->sh_addralign = compute_p_align(file->elf64_shdr[i]->sh_addr, file->elf64_shdr[i]->sh_offset, file->elf64_shdr[i]->sh_addralign);
+		if (file->elf64_shdr[i]->sh_type == SHT_SYMTAB)
 		{
 			sym_index = i;
-			*sym_link = file->elf64_shdr[i].sh_link;
+			*sym_link = file->elf64_shdr[i]->sh_link;
 		}
 		i++;
 	}
 	i = 0;
-	while (i < file->elf64_ehdr.e_shnum)
+	while (i < file->elf64_ehdr->e_shnum)
 	{
-		name = (file->elf64_shdr[i].sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr.e_shstrndx].sh_offset);
+		name = (file->elf64_shdr[i]->sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr->e_shstrndx]->sh_offset);
 		if (ft_strcmp(name , ".text") == 0 && ft_strlen(".text") == 5)
 		{
-			printf("Name[%d] : %s\n",i, file->elf64_shdr[i].sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr.e_shstrndx].sh_offset);
-			file->elf64_shdr_text = file->elf64_shdr[i];
+			printf("Name[%d] : %s\n",i, file->elf64_shdr[i]->sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr->e_shstrndx]->sh_offset);
+			file->elf64_shdr_text = *file->elf64_shdr[i];
 		}
-		//printf("Name[%d] : %s\n",i, file->elf64_shdr[i].sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr.e_shstrndx].sh_offset);
+		printf("Name[%d] : %s\n",i, file->elf64_shdr[i]->sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr->e_shstrndx]->sh_offset);
 		i++;
 	}
 	return (sym_index);
+}
+
+static void	parse_program_headers(t_elf_file *file)
+{
+	int	i;
+
+	i = 0;
+	file->offset = file->elf64_ehdr->e_phoff;
+	printf("file->offset : %ld\n", file->offset);
+	while (i < file->elf64_ehdr->e_phnum)
+	{
+		elf_set(file, file->elf64_ehdr->e_phentsize, (void **)&file->elf64_phdr[i], 0);
+		file->elf64_phdr[i]->p_offset += 0x38;
+		file->elf64_phdr[i]->p_vaddr += 0x38;
+		file->elf64_phdr[i]->p_paddr = file->elf64_phdr[i]->p_vaddr;
+		file->elf64_phdr[i]->p_align = compute_p_align(file->elf64_phdr[i]->p_vaddr, file->elf64_phdr[i]->p_offset, file->elf64_phdr[i]->p_align);
+		//file->elf64_phdr[i]->p_paddr += 0x38;
+		i++;
+	}
+	const char *salut = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	insert_bytes(file, salut, file->offset, 0x38, file->file_len + 0x38);
+	//file->elf64_ehdr->e_phnum += 1;
+	file->elf64_ehdr->e_shoff += 0x38;
+	file->elf64_ehdr->e_entry += 0x38;
+	file->offset += 0x38;
+
+}
+
+void	elf64_phdr_parse(t_elf_file *file)
+{
+	parse_program_headers(file);
+	printf("test : %d %d\n", file->elf64_phdr[0]->p_type, 0);
 }
 
 void	elf64_shdr_parse(t_elf_file *file)

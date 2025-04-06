@@ -51,10 +51,10 @@ static char	get_section_symbol(t_elf_file *file, Elf32_Sym sym)
 	Elf32_Shdr	*sec;
 	const char	*sec_name;
 
-	sec = &file->elf32_shdr[sym.st_shndx];
+	sec = file->elf32_shdr[sym.st_shndx];
 	sec_name = (const char *)
 		(file->file_map + file->elf32_shdr
-		[file->elf32_ehdr.e_shstrndx].sh_offset + sec->sh_name);
+		[file->elf32_ehdr->e_shstrndx]->sh_offset + sec->sh_name);
 	if (!ft_strncmp(sec_name, ".text", ft_strlen(sec_name)))
 		return ('T');
 	else if (!ft_strncmp(sec_name, ".data", ft_strlen(sec_name)))
@@ -91,7 +91,7 @@ char	elf32_get_symbol(t_elf_file *file, Elf32_Sym sym)
 	if (sym.st_shndx == SHN_UNDEF || sym.st_shndx == SHN_ABS
 		|| sym.st_shndx == SHN_COMMON)
 		letter = get_special_section_symbol(sym);
-	else if (sym.st_shndx < file->elf32_ehdr.e_shnum)
+	else if (sym.st_shndx < file->elf32_ehdr->e_shnum)
 		letter = get_section_symbol(file, sym);
 	if (bind == STB_LOCAL && letter != '?')
 		letter |= 32;

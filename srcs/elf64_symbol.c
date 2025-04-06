@@ -51,9 +51,9 @@ static char	get_section_symbol_64(t_elf_file *file, Elf64_Sym sym)
 	Elf64_Shdr	*sec;
 	const char	*sec_name;
 
-	sec = &file->elf64_shdr[sym.st_shndx];
+	sec = file->elf64_shdr[sym.st_shndx];
 	sec_name = (const char *)(file->file_map + file->elf64_shdr
-		[file->elf64_ehdr.e_shstrndx].sh_offset + sec->sh_name);
+		[file->elf64_ehdr->e_shstrndx]->sh_offset + sec->sh_name);
 	if (!ft_strncmp(sec_name, ".text", ft_strlen(sec_name)))
 		return ('T');
 	else if (!ft_strncmp(sec_name, ".bss", ft_strlen(sec_name)))
@@ -91,7 +91,7 @@ char	elf64_get_symbol(t_elf_file *file, Elf64_Sym sym)
 	if (sym.st_shndx == SHN_UNDEF || sym.st_shndx == SHN_ABS
 		|| sym.st_shndx == SHN_COMMON)
 		letter = get_special_section_symbol_64(sym);
-	else if (sym.st_shndx < file->elf64_ehdr.e_shnum)
+	else if (sym.st_shndx < file->elf64_ehdr->e_shnum)
 		letter = get_section_symbol_64(file, sym);
 	if (bind == STB_LOCAL && letter != '?')
 		letter |= 32;

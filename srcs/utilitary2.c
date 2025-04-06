@@ -36,6 +36,7 @@ void	print_nm32(void *value)
 
 void	ft_free_all(t_elf_file *file)
 {
+	create_new_file_from_map(file);
 	if (file->lst_value)
 		ft_free_lst(file);
 	if (file->tmp)
@@ -48,6 +49,10 @@ void	ft_free_all(t_elf_file *file)
 		free(file->elf32_shdr);
 	if (file->elf32_sym)
 		free(file->elf32_sym);
+	if (file->elf32_phdr)
+		free(file->elf32_phdr);
+	if (file->elf64_phdr)
+		free(file->elf64_phdr);
 }
 
 void	ft_free_lst(t_elf_file *file)

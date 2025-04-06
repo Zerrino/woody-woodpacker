@@ -27,6 +27,10 @@ typedef struct s_list
 	struct s_list	*next;
 }	t_list;
 */
+// ELF header Ehdr
+// ELF Program Phdr
+// ELF Section Shdr
+
 typedef struct nm_value
 {
 	int					flag_a;
@@ -55,8 +59,10 @@ typedef struct elf_file
 	int			error;
 	int			bss;
 	int			data;
-	char		type_ehdr;
-	char		type_end;
+
+	uint8_t	type_ehdr;
+	uint8_t	type_end;
+
 	int			padding;
 	int			flag_a;
 	int			flag_g;
@@ -65,17 +71,23 @@ typedef struct elf_file
 	int			flag_p;
 	int			flag_m;
 
-	Elf64_Ehdr	elf64_ehdr;
-	Elf32_Ehdr	elf32_ehdr;
+	Elf64_Ehdr	*elf64_ehdr;
+	Elf32_Ehdr	*elf32_ehdr;
+
 	Elf64_Sym	*elf64_sym;
 	Elf32_Sym	*elf32_sym;
 
 	int			number_symtab;
 	int			number_dynsym;
 	char		**name_symtab;
+
+
+	Elf64_Phdr **elf64_phdr;
+	Elf32_Phdr **elf32_phdr;
+
 	Elf64_Shdr	elf64_shdr_text;
-	Elf64_Shdr	*elf64_shdr;
-	Elf32_Shdr	*elf32_shdr;
+	Elf64_Shdr	**elf64_shdr;
+	Elf32_Shdr	**elf32_shdr;
 
 	t_nm_value	*tmp;
 	t_list		*lst_value;
@@ -89,7 +101,7 @@ int		elf_parsing(t_elf_file *file);
 int		nm_sort_key(char *str);
 void	elf64_shdr_parse(t_elf_file *file);
 void	elf32_shdr_parse(t_elf_file *file);
-void	elf_set(t_elf_file *file, int len, void *value, int end);
+void	elf_set(t_elf_file *file, int len, void **value, int end);
 void	print_hexa(unsigned long long value, int padding);
 void	print_nm(void *value);
 //void	ft_swap(t_list *stack, int index, int index2);
@@ -111,5 +123,11 @@ char	elf64_get_symbol(t_elf_file *file, Elf64_Sym sym);
 int		check_shdr_bounds(t_elf_file *file);
 int		check_shdr_bounds_32(t_elf_file *file);
 int		ft_strcmp(const char *s1, const char *s2);
-
+void	elf64_phdr_parse(t_elf_file *file);
+void	create_new_file_from_map(t_elf_file *file);
+//void	elf_set_tamp(t_elf_file *file, int len, void *value, int end);
+uint64_t read_u64(uint8_t *data, int is_big_endian);
+uint16_t read_u16(uint8_t *data, int is_big_endian);
+uint32_t read_u32(uint8_t *data, int is_big_endian);
+void insert_bytes(t_elf_file *file, const char *new_bytes, size_t insert_offset, size_t insert_size, size_t allocated_size);
 #endif

@@ -41,6 +41,25 @@ off_t	file_length(char *path)
 	return (buffer.st_size);
 }
 
+void insert_bytes(t_elf_file *file, const char *new_bytes, size_t insert_offset, size_t insert_size, size_t allocated_size)
+{
+	size_t old_size = file->file_len;
+	size_t new_size = old_size + insert_size;
+
+	if (new_size > allocated_size)
+	{
+		ft_putendl_fd("Mapping insuffisant pour l'insertion.", 2);
+		return;
+	}
+	ft_memmove(file->file_map + insert_offset + insert_size,
+			file->file_map + insert_offset,
+			old_size - insert_offset);
+
+	ft_memcpy(file->file_map + insert_offset, new_bytes, insert_size);
+
+	file->file_len = new_size;
+}
+
 void	mapping_file(t_elf_file *file)
 {
 	int			fd_out;
@@ -52,7 +71,7 @@ void	mapping_file(t_elf_file *file)
 		file->error = 1;
 		return ;
 	}
-	file->file_map = mmap(NULL, file->file_len, PROT_READ,
+	file->file_map = mmap(NULL, file->file_len + 0x38, PROT_READ | PROT_WRITE,
 			MAP_PRIVATE, fd_out, 0);
 	close(fd_out);
 	if (file->file_map == MAP_FAILED)
@@ -60,6 +79,34 @@ void	mapping_file(t_elf_file *file)
 		ft_putendl_fd("map failed.", 2);
 		exit(0);
 	}
+}
+
+void create_new_file_from_map(t_elf_file *file)
+{
+	int fd_new;
+	ssize_t bytes_written;
+	off_t total_written = 0;
+
+	fd_new = open("woody", O_CREAT | O_WRONLY | O_TRUNC, 0755);
+	if (fd_new < 0)
+	{
+		ft_putendl_fd("Error: could not create new file", 2);
+		return;
+	}
+	while (total_written < file->file_len)
+	{
+		bytes_written = write(fd_new,
+							(char *)file->file_map + total_written,
+							file->file_len - total_written);
+		if (bytes_written < 0)
+		{
+			ft_putendl_fd("Error: write failed", 2);
+			close(fd_new);
+			return;
+		}
+		total_written += bytes_written;
+	}
+	close(fd_new);
 }
 
 void	print_nm(void *value)
