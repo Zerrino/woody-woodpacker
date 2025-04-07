@@ -6,7 +6,7 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/11 20:03:48 by alexafer          #+#    #+#             */
-/*   Updated: 2025/04/06 18:58:54 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/07 00:54:32 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -130,6 +130,6 @@ void	create_new_file_from_map(t_elf_file *file);
 //void	elf_set_tamp(t_elf_file *file, int len, void *value, int end);
 void insert_bytes(t_elf_file *file, const char *new_bytes, size_t insert_offset, size_t insert_size, size_t allocated_size);
 void	elf64_woody(t_elf_file *file);
-uint64_t compute_p_align(uint64_t p_vaddr, uint64_t p_offset, uint64_t default_align);
+Elf64_Xword compute_p_align(Elf64_Addr vaddr, Elf64_Off offset);
 
 #endif

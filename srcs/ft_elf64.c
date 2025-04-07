@@ -6,30 +6,27 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 15:51:05 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/04/06 19:18:21 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/07 21:38:59 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/ft_nm.h"
 
-uint64_t compute_p_align(uint64_t p_vaddr, uint64_t p_offset, uint64_t default_align)
+Elf64_Xword compute_p_align(Elf64_Addr vaddr, Elf64_Off offset)
 {
-	uint64_t diff = (p_vaddr > p_offset) ? (p_vaddr - p_offset) : (p_offset - p_vaddr);
+	Elf64_Xword align = 0x1000;
+	const Elf64_Xword max_align = (1ULL << 24); // 16MB max align (sécurité)
 
-	if (diff == 0)
-		return default_align; // Aucun décalage, on retourne l'alignement par défaut.
-
-	// Le calcul suivant retourne le plus petit diviseur puissance de 2 de diff,
-	// c'est-à-dire la plus grande puissance de 2 qui divise diff.
-	uint64_t computed_align = diff & (~(diff - 1));
-
-	// Optionnel : si vous voulez que l'alignement soit au moins default_align,
-	// et que default_align est une puissance de 2, vous pouvez forcer à choisir la valeur maximale.
-	if (computed_align < default_align)
-		computed_align = default_align;
-
-	// En tout cas, la condition p_vaddr % computed_align == p_offset % computed_align est satisfaite.
-	return computed_align;
+	while ((vaddr % align) != (offset % align))
+	{
+		align <<= 1;
+		if (align > max_align)
+		{
+			fprintf(stderr, "❌ Impossible de trouver un alignement commun entre vaddr=0x%lx et offset=0x%lx\n", vaddr, offset);
+			return 0x1000; // ou retourne 0x1000 par défaut
+		}
+	}
+	return align;
 }
 
 static int	parse_section_headers(t_elf_file *file, int *sym_link)
@@ -84,7 +81,7 @@ static void	parse_program_headers(t_elf_file *file)
 	//file->elf64_ehdr->e_phnum += 1;
 	//file->elf64_ehdr->e_shoff += 0x38;
 	//file->elf64_ehdr->e_entry += 0x38;
-	file->offset += 0x38;
+	//file->offset += 0x38;
 
 }
 
@@ -95,6 +92,7 @@ void	elf64_phdr_parse(t_elf_file *file)
 	char salut[56];
 
 	ft_memset(salut, '0', 56);
+	printf("offset to insert : %ld\n", file->offset_insert);
 	insert_bytes(file, salut, file->offset_insert, 0x38, file->file_len + 0x38);
 	//printf("test : %d %d\n", file->elf64_phdr[0]->p_type, 0);
 }
