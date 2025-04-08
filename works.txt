@@ -1,0 +1,3 @@
+gcc -nostartfiles -o a.out main.c | WORKS
+
+gcc -static -no-pie -o a.out test2.c | DOESNT WORKS
