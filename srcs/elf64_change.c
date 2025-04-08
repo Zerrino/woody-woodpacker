@@ -6,7 +6,7 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:53:13 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/04/07 22:45:00 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/08 19:43:15 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,6 +51,7 @@ void adjust_segment_fields(Elf64_Phdr *ph, Elf64_Off x)
     ph->p_align = (Elf64_Off) diff & (-(Elf64_Off) diff);
 }
 
+
 void	elf64_hdr_change(t_elf_file *file)
 {
 	if (file->elf64_ehdr->e_shoff > file->offset_insert)
@@ -85,18 +86,42 @@ void	elf64_phdr_change(t_elf_file *file)
 
 		printf("\n[PHDR #%d]\n", i);
 		print_segment_type(ph->p_type);
-		printf("  Original p_offset  : 0x%lx\n", ph->p_offset);
-		printf("  Original p_vaddr   : 0x%lx\n", ph->p_vaddr);
-		printf("  Original p_align   : 0x%lx\n", ph->p_align);
-		printf("  Insertion point    : 0x%lx\n", file->offset_insert);
-
-		if (ph->p_offset >= file->offset_insert)
+		if (ph->p_offset >= file->offset_insert && (ph->p_type == PT_LOAD || ph->p_type == PT_TLS || ph->p_type == PT_DYNAMIC || ph->p_type == PT_INTERP || ph->p_type == PT_PHDR))
 		{
-			printf("  ➜ p_offset modifié : 0x%lx → ", ph->p_offset);
-			ph->p_offset += 0x38;
-			ph->p_vaddr  += 0x38;
-			ph->p_paddr  += 0x38;
-			printf("0x%lx (décalé de +0x38)\n", ph->p_offset);
+			printf("  Original p_offset  : 0x%lx\n", ph->p_offset);
+			printf("  Original p_vaddr   : 0x%lx\n", ph->p_vaddr);
+			printf("  Original p_align   : 0x%lx\n", ph->p_align);
+			printf("  Original p_filesz  : 0x%lx\n", ph->p_filesz);
+			printf("  Original p_memsz   : 0x%lx\n", ph->p_memsz);
+			switch (ph->p_type)
+			{
+				case PT_PHDR:
+					break;
+				case PT_LOAD:
+
+					break;
+				case PT_TLS:
+					ph->p_offset += 0x38;
+					ph->p_vaddr += 0x38;
+					ph->p_paddr += 0x38;
+					break;
+				case PT_INTERP:
+					ph->p_offset += 0x38;
+					ph->p_vaddr += 0x38;
+					ph->p_paddr += 0x38;
+					break;
+				case PT_DYNAMIC:
+					ph->p_offset += 0x38;
+					ph->p_vaddr += 0x38;
+					ph->p_paddr += 0x38;
+					break;
+				default:
+					break;
+			}
+		}
+		else
+		{
+			printf("Not actually useful.\n");
 		}
 
 		if (ph->p_filesz > ph->p_memsz) {
