@@ -6,7 +6,7 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/11 20:03:48 by alexafer          #+#    #+#             */
-/*   Updated: 2025/04/07 00:54:32 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/11 00:31:02 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,6 +71,8 @@ typedef struct elf_file
 	int			flag_p;
 	int			flag_m;
 
+	uint64_t	text_offset;
+	uint64_t	text_size;
 	uint64_t	offset_insert;
 
 	Elf64_Ehdr	*elf64_ehdr;
@@ -82,7 +84,7 @@ typedef struct elf_file
 	int			number_symtab;
 	int			number_dynsym;
 	char		**name_symtab;
-
+	int			v_base;
 
 	Elf64_Phdr **elf64_phdr;
 	Elf32_Phdr **elf32_phdr;

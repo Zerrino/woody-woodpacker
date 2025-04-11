@@ -6,11 +6,12 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:53:13 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/04/08 19:43:15 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/11 00:50:24 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/ft_nm.h"
+#include <assert.h>
 
 void print_segment_type(uint32_t p_type)
 {
@@ -34,30 +35,56 @@ void print_segment_type(uint32_t p_type)
     }
 }
 
-void adjust_segment_fields(Elf64_Phdr *ph, Elf64_Off x)
+void create_load_segment_header(Elf64_Phdr *ph, uint64_t file_off, uint64_t size, uint64_t vbase)
 {
-    // On laisse p_vaddr inchangé (et de même p_paddr si nécessaire)
-    // On augmente p_offset de x pour obtenir le nouvel offset dans le fichier.
-    ph->p_offset += x;
+    // Définition du type du segment : chargement
+    ph->p_type   = PT_LOAD;
 
-    // Calcul de la différence : elle doit être un multiple de new_p_align.
-    // Note : On calcule le module de la différence en valeur absolue.
-    int64_t diff = (int64_t)(ph->p_offset) - (int64_t)(ph->p_vaddr);
-    if(diff < 0)
-        diff = -diff;
+    // Définition des flags : ici, lecture et écriture (modifiable selon vos besoins)
+    ph->p_flags  = PF_R | PF_W;
 
-    // new_p_align doit diviser exactement diff.
-    // La formule "diff & (-diff)" donne la plus grande puissance de 2 qui divise diff.
-    ph->p_align = (Elf64_Off) diff & (-(Elf64_Off) diff);
+    // Le segment commencera à l'offset fourni, c'est-à-dire à la fin du fichier
+    ph->p_offset = file_off;
+
+    // Calcul de l'adresse virtuelle : la base virtuelle plus l’offset
+    ph->p_vaddr  = vbase + file_off;
+
+    // Dans un contexte simple, l'adresse physique est la même que l'adresse virtuelle
+    ph->p_paddr  = ph->p_vaddr;
+
+    // La taille dans le fichier et en mémoire est définie à 'size' (ici 10)
+    ph->p_filesz = size;
+    ph->p_memsz  = size;
+
+    // Alignement du segment : par exemple, au niveau d'une taille de page classique (4096 octets)
+    ph->p_align  = 0x1000;
 }
 
+void print_segment_flags(unsigned int p_flags)
+{
+	printf("  Flags: 0x%x (", p_flags);
+
+	int first = 1;
+	if (p_flags & PF_R) {
+		printf("READ");
+		first = 0;
+	}
+	if (p_flags & PF_W) {
+		if (!first) printf(" | ");
+		printf("WRITE");
+		first = 0;
+	}
+	if (p_flags & PF_X) {
+		if (!first) printf(" | ");
+		printf("EXECUTE");
+	}
+
+	printf(")\n");
+}
 
 void	elf64_hdr_change(t_elf_file *file)
 {
-	if (file->elf64_ehdr->e_shoff > file->offset_insert)
-		file->elf64_ehdr->e_shoff += 0x38;
-	if (file->elf64_ehdr->e_entry > file->offset_insert)
-		file->elf64_ehdr->e_entry += 0x38;
+	(void)file;
 }
 
 void	elf64_shdr_change(t_elf_file *file)
@@ -68,79 +95,134 @@ void	elf64_shdr_change(t_elf_file *file)
 	while (i < file->elf64_ehdr->e_shnum)
 	{
 
-		file->elf64_shdr[i]->sh_offset += 0x38;
-		file->elf64_shdr[i]->sh_addr   += 0x38;
+		//ft_memset(file->elf64_shdr[i], '\0', sizeof(Elf64_Shdr));
 		i++;
 	}
 }
 
-void	elf64_phdr_change(t_elf_file *file)
+void xor_crypt(unsigned char *data, unsigned char *key, size_t size_data, size_t size_key)
 {
-	int	i;
-
-	i = 0;
-	while (i < file->elf64_ehdr->e_phnum)
-	{
-		Elf64_Phdr *ph = file->elf64_phdr[i];
-
-
-		printf("\n[PHDR #%d]\n", i);
-		print_segment_type(ph->p_type);
-		if (ph->p_offset >= file->offset_insert && (ph->p_type == PT_LOAD || ph->p_type == PT_TLS || ph->p_type == PT_DYNAMIC || ph->p_type == PT_INTERP || ph->p_type == PT_PHDR))
-		{
-			printf("  Original p_offset  : 0x%lx\n", ph->p_offset);
-			printf("  Original p_vaddr   : 0x%lx\n", ph->p_vaddr);
-			printf("  Original p_align   : 0x%lx\n", ph->p_align);
-			printf("  Original p_filesz  : 0x%lx\n", ph->p_filesz);
-			printf("  Original p_memsz   : 0x%lx\n", ph->p_memsz);
-			switch (ph->p_type)
-			{
-				case PT_PHDR:
-					break;
-				case PT_LOAD:
-
-					break;
-				case PT_TLS:
-					ph->p_offset += 0x38;
-					ph->p_vaddr += 0x38;
-					ph->p_paddr += 0x38;
-					break;
-				case PT_INTERP:
-					ph->p_offset += 0x38;
-					ph->p_vaddr += 0x38;
-					ph->p_paddr += 0x38;
-					break;
-				case PT_DYNAMIC:
-					ph->p_offset += 0x38;
-					ph->p_vaddr += 0x38;
-					ph->p_paddr += 0x38;
-					break;
-				default:
-					break;
-			}
-		}
-		else
-		{
-			printf("Not actually useful.\n");
-		}
-
-		if (ph->p_filesz > ph->p_memsz) {
-			printf("❌ ERROR: p_filesz > p_memsz in segment #%d\n", i);
-		}
-
-		if ((ph->p_offset % ph->p_align) != (ph->p_vaddr % ph->p_align)) {
-			ph->p_align = compute_p_align(ph->p_vaddr, ph->p_offset);
-		}
-		if ((ph->p_offset % ph->p_align) != (ph->p_vaddr % ph->p_align)) {
-			printf("❌ ERROR: p_offset %% p_align != p_vaddr %% p_align in segment #%d\n", i);
-		}
-
-		if (ph->p_align == 0 || (ph->p_align & (ph->p_align - 1)) != 0) {
-			printf("❌ ERROR: p_align is not a power of 2 in segment #%d\n", i);
-		}
-		i++;
-	}
+    for (size_t i = 0; i < size_data; i++)
+    {
+        data[i] ^= key[i % size_key];
+    }
 }
+
+
+void generate_key(unsigned char *key, size_t size)
+{
+    int fd = open("/dev/urandom", O_RDONLY);
+    size_t i;
+    if (fd == -1)
+    {
+        perror("open");
+        exit(1);
+    }
+    if (read(fd, key, size) != (ssize_t)size)
+    {
+        perror("read");
+        close(fd);
+        exit(1);
+    }
+    close(fd);
+    i = 0;
+    while (i < size)
+    {
+        key[i] = key[i] % 62;
+        if (key[i] < 10)
+            key[i] += '0';
+        else if (key[i] < 36)
+            key[i] += 'A' - 10;
+        else
+            key[i] += 'a' - 36;
+        i++;
+    }
+}
+
+void elf64_phdr_change(t_elf_file *file)
+{
+    int i;
+    Elf64_Phdr *target_phdr = NULL;
+    Elf64_Off max_end = 0;
+    for (i = 0; i < file->elf64_ehdr->e_phnum; i++)
+    {
+        if (file->elf64_phdr[i]->p_type == PT_LOAD)
+        {
+            Elf64_Off end = file->elf64_phdr[i]->p_offset + file->elf64_phdr[i]->p_filesz;
+            if (end > max_end)
+            {
+                max_end = end;
+                target_phdr = file->elf64_phdr[i];
+            }
+        }
+    }
+
+    if (!target_phdr)
+    {
+        fprintf(stderr, "Aucun segment LOAD trouvé\n");
+        return;
+    }
+    target_phdr->p_flags |= PF_X;
+    off_t stub_offset = max_end;
+
+
+
+
+
+    unsigned char key[16];
+    generate_key(key, 16);
+    write(1, "key : ", 6);
+    write(1, key, 16);
+    write(1, "\n", 1);
+
+    xor_crypt((unsigned char *)(file->file_map + file->text_offset), key, file->text_offset, sizeof(key));
+
+    unsigned char stub[54] = {
+        // jmp short +0x0e
+        0xeb, 0x0e,
+        // ....WOODY....\n
+        0x2e, 0x2e, 0x2e, 0x2e,
+        0x57, 0x4f, 0x4f, 0x44, 0x59,
+        0x2e, 0x2e, 0x2e, 0x2e,
+        0x0a,
+        // mov eax, 1
+        0xB8, 0x01, 0x00, 0x00, 0x00,
+        // mov edi, 1
+        0xBF, 0x01, 0x00, 0x00, 0x00,
+        // lea rsi, [rip - 0]
+        0x48, 0x8D, 0x35, 0xE1, 0xFF, 0xFF, 0xFF,
+        // mov edx, 14
+        0xBA, 0x0e, 0x00, 0x00, 0x00,
+        // syscall
+        0x0f, 0x05,
+
+
+
+
+
+
+        // xor rax, rax
+        0x48, 0x31, 0xC0,
+        // xor rdi, rdi
+        0x48, 0x31, 0xFF,
+        // xor rdx, rdx
+        0x48, 0x31, 0xD2,
+        // jmp [rip + 0]
+        0xE9, 0x00, 0x00, 0x00, 0x00
+    };
+
+
+    Elf64_Addr stub_vaddr = (target_phdr->p_vaddr + (stub_offset - target_phdr->p_offset));
+    int32_t relative_offset = file->elf64_ehdr->e_entry - (stub_vaddr + sizeof(stub));
+    ft_memcpy(&stub[sizeof(stub) - 4], &relative_offset, sizeof(uint32_t));
+    ft_memcpy(file->file_map + stub_offset, stub, sizeof(stub));
+    if ((long unsigned int)file->file_len < (stub_offset + sizeof(stub)))
+        file->file_len = stub_offset + sizeof(stub);
+    target_phdr->p_filesz += sizeof(stub);
+    target_phdr->p_memsz  += sizeof(stub);
+    file->elf64_ehdr->e_entry = stub_vaddr;
+}
+
 
 void	elf64_woody(t_elf_file *file)
 {

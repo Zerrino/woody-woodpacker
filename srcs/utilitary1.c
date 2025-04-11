@@ -6,7 +6,7 @@
 /*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:49:14 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/04/07 21:12:15 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/04/10 02:54:55 by Zerrino          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,7 +73,7 @@ void	mapping_file(t_elf_file *file)
 		file->error = 1;
 		return ;
 	}
-	file->file_map = mmap(NULL, file->file_len + 0x38, PROT_READ | PROT_WRITE,
+	file->file_map = mmap(NULL, file->file_len + 66, PROT_READ | PROT_WRITE,
 			MAP_PRIVATE, fd_out, 0);
 	close(fd_out);
 	if (file->file_map == MAP_FAILED)

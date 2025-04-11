@@ -11,6 +11,11 @@
 		"tuple": "c",
 		"type_traits": "c",
 		"utility": "c",
-		"*.tcc": "c"
+		"*.tcc": "c",
+		"compare": "c",
+		"cstdint": "c",
+		"string": "c",
+		"string_view": "c",
+		"span": "c"
 	}
 }
