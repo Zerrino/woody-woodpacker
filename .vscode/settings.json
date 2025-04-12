@@ -16,6 +16,17 @@
 		"cstdint": "c",
 		"string": "c",
 		"string_view": "c",
-		"span": "c"
+		"span": "c",
+		"hash_map": "c",
+		"hash_set": "c",
+		"deque": "c",
+		"forward_list": "c",
+		"list": "c",
+		"unordered_map": "c",
+		"unordered_set": "c",
+		"vector": "c",
+		"initializer_list": "c",
+		"text_encoding": "c",
+		"valarray": "c"
 	}
 }

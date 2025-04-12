@@ -6,7 +6,7 @@
 #    By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/06 09:46:53 by zerrino           #+#    #+#              #
-#    Updated: 2025/04/06 18:22:50 by Zerrino          ###   ########.fr        #
+#    Updated: 2025/04/11 20:26:59 by Zerrino          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -38,7 +38,7 @@ SRC_FILES = utilitary.c\
 			utilitary2.c\
 			elf64_change.c\
 
-SRC_FILES_ASM = rotate.s
+SRC_FILES_ASM = ft_encrypt.s
 
 
 SRCS_MAIN = $(addprefix $(SRC_DIR)/, $(MAIN_FILES))
