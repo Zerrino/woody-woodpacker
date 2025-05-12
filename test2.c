@@ -1,14 +1,25 @@
-
 #include <stdio.h>
-#include <stdlib.h>
 
-int	main(int argc, char **argv)
+int	main(int argc, char **argv, char **envp)
 {
-	if (argc != 2)
+	int	i = 0;
+
+	printf("ARGC : %d\n", argc);
+	while (i < argc)
 	{
-		printf("pas de argc == 2!\n");
+		printf("argv[%d] : %s\n", i, argv[i]);
+		i++;
 	}
-	printf("argv[0] : %s, argc : %d\n", argv[0], argc);
-	printf("Salut!\n");
-	exit(0);
+
+	// Afficher les premières variables d’environnement
+	printf("\nENVIRONNEMENT :\n");
+	i = 0;
+	while (envp[i])
+	{
+		//printf("envp[%d] : %s\n", i, envp[i]);
+		i++;
+	}
+	printf("envp[%d]\n", i);
+
+	return 0;
 }
