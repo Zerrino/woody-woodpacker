@@ -6,7 +6,7 @@
 /*   By: alexafer <alexafer@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:53:13 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/05/14 04:05:49 by alexafer         ###   ########.fr       */
+/*   Updated: 2025/05/14 04:11:27 by alexafer         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -342,7 +342,7 @@ void elf64_phdr_change(t_elf_file *file)
         0x48, 0x81, 0xec, 0xDD, 0xDD, 0x00, 0x00, //   sub    rsp,0x1b6
 
         0x4C, 0x89, 0xC7, 0x48, 0x8D, 0x34, 0x24, 0x48, 0xC7, 0xC2, 0xDD, 0xDD, 0x00, 0x00, 0x49, 0xC7, 0xC2,
-        0xCC, 0xCC,
+        0xAA, 0xAA,
         0x00, 0x00, 0x4D, 0x31, 0xC0, 0x48, 0xC7, 0xC0, 0x11, 0x00, 0x00, 0x00, 0x0F, 0x05, 0x48, 0x8D, 0x3C, 0x24, 0x4C, 0x89, 0xFE, 0x48, 0xC7, 0xC2, 0xDD, 0xDD, 0x00, 0x00,
 
 
@@ -407,7 +407,7 @@ void elf64_phdr_change(t_elf_file *file)
 
         0x4C, 0x89, 0xE7, 0x48, 0x8D, 0x34, 0x24, 0x48, 0xC7, 0xC2, 0xDD, 0xDD, 0x00, 0x00, 0x49, 0xC7, 0xC2,
 
-        0xBB, 0xBB,
+        0xAA, 0xAA,
 
         0x00, 0x00, 0x4D, 0x31, 0xC0, 0x48, 0xC7, 0xC0, 0x12, 0x00, 0x00, 0x00, 0x0F, 0x05,
 
@@ -434,15 +434,22 @@ void elf64_phdr_change(t_elf_file *file)
         0x05,
     };
 
-    ft_memcpy(&stub[415], &file->text_offset, sizeof(uint32_t));
-    ft_memcpy(&stub[490], &file->text_offset, sizeof(uint32_t));
-    ft_memcpy(&stub[605], &file->text_offset, sizeof(uint32_t));
-    ft_memcpy(&stub[469], &file->text_size, sizeof(uint32_t));
-    ft_memcpy(&stub[483], &file->text_size, sizeof(uint32_t));
-    ft_memcpy(&stub[516], &file->text_size, sizeof(uint32_t));
-    ft_memcpy(&stub[539], &file->text_size, sizeof(uint32_t));
-    ft_memcpy(&stub[598], &file->text_size, sizeof(uint32_t));
-    ft_memcpy(&stub[624], &file->text_size, sizeof(uint32_t));
+    unsigned char pattern[] = { 0xAA, 0xAA};
+    size_t stub_len = sizeof(stub);
+    size_t pattern_len = sizeof(pattern);
+
+    for (size_t i = 0; i <= stub_len - pattern_len; ++i) {
+        if (memcmp(&stub[i], pattern, pattern_len) == 0) {
+            ft_memcpy(&stub[i], &file->text_offset, sizeof(uint32_t));
+        }
+    }
+    unsigned char pattern2[] = { 0xDD, 0xDD};
+    for (size_t i = 0; i <= stub_len - pattern_len; ++i) {
+        if (memcmp(&stub[i], pattern2, pattern_len) == 0) {
+            ft_memcpy(&stub[i], &file->text_size, sizeof(uint32_t));
+        }
+    }
+
 
 
     Elf64_Addr stub_vaddr = (target_phdr->p_vaddr + (stub_offset - target_phdr->p_offset));
