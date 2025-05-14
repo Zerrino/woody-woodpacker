@@ -6,7 +6,7 @@
 /*   By: alexafer <alexafer@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:53:13 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/05/14 04:11:27 by alexafer         ###   ########.fr       */
+/*   Updated: 2025/05/14 18:58:28 by alexafer         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -327,7 +327,7 @@ void elf64_phdr_change(t_elf_file *file)
         // juste avant
         0x41, 0x50, 0x56, 0x41, 0x53,
         // mov    rax,0x10a0 ENTRY ADDRESSE ICI!! //
-        0x48, 0xC7, 0xC0, 0xAA, 0xAA, 0x00, 0x00,
+        0x48, 0xC7, 0xC0, 0xAB, 0xAB, 0x40, 0x00,
         //
         0x50, 0x48, 0x8D, 0x34, 0x24, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x4C, 0x89, 0xC7, 0x49, 0xC7, 0xC2, 0x18, 0x00, 0x00, 0x00, 0x4D, 0x31, 0xC0, 0x48, 0xC7, 0xC0, 0x12, 0x00, 0x00, 0x00, 0x0F, 0x05, 0x58, 0x41, 0x5B, 0x5E, 0x41, 0x58,
 
@@ -438,6 +438,7 @@ void elf64_phdr_change(t_elf_file *file)
     size_t stub_len = sizeof(stub);
     size_t pattern_len = sizeof(pattern);
 
+
     for (size_t i = 0; i <= stub_len - pattern_len; ++i) {
         if (memcmp(&stub[i], pattern, pattern_len) == 0) {
             ft_memcpy(&stub[i], &file->text_offset, sizeof(uint32_t));
@@ -450,16 +451,20 @@ void elf64_phdr_change(t_elf_file *file)
         }
     }
 
-
+    unsigned char pattern3[] = { 0xAB, 0xAB};
+    for (size_t i = 0; i <= stub_len - pattern_len; ++i) {
+        if (memcmp(&stub[i], pattern3, pattern_len) == 0) {
+            ft_memcpy(&stub[i], &file->elf64_ehdr->e_entry, sizeof(uint32_t));
+        }
+    }
 
     Elf64_Addr stub_vaddr = (target_phdr->p_vaddr + (stub_offset - target_phdr->p_offset));
-    //int32_t relative_offset = file->elf64_ehdr->e_entry - (stub_vaddr + sizeof(stub));
-    //ft_memcpy(&stub[sizeof(stub) - 4], &relative_offset, sizeof(uint32_t));
     ft_memcpy(file->file_map + stub_offset, stub, sizeof(stub));
     if ((long unsigned int)file->file_len < (stub_offset + sizeof(stub)))
         file->file_len = stub_offset + sizeof(stub);
     target_phdr->p_filesz += sizeof(stub);
     target_phdr->p_memsz  += sizeof(stub);
+    (void)stub_vaddr;
     file->elf64_ehdr->e_entry = stub_vaddr;
 }
 
