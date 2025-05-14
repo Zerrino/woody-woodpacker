@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ft_elf64.c                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
+/*   By: alexafer <alexafer@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 15:51:05 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/04/11 00:29:33 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/05/14 03:41:58 by alexafer         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,16 +99,17 @@ void	elf64_phdr_parse(t_elf_file *file)
 
 void	elf64_shdr_parse(t_elf_file *file)
 {
-	int			i;
+	//int			i;
 	int			sym_link;
-	char		*start;
+	//char		*start;
 	if (!check_shdr_bounds(file))
 		return ;
 	parse_section_headers(file, &sym_link);
-	printf("offset : %ld, size : %ld\n", file->elf64_shdr_text.sh_offset, file->elf64_shdr_text.sh_size);
-	start = (void *)(file->file_map + file->elf64_shdr_text.sh_offset);
+	//printf("offset : %ld, size : %ld\n", file->elf64_shdr_text.sh_offset, file->elf64_shdr_text.sh_size);
+	//start = (void *)(file->file_map + file->elf64_shdr_text.sh_offset);
 	file->text_offset = file->elf64_shdr_text.sh_offset;
 	file->text_size = file->elf64_shdr_text.sh_size;
+	/*
 	i = 0;
 	ft_putnbr_fd(0, 1);
 	write(1, "  : ", 4);
@@ -127,4 +128,5 @@ void	elf64_shdr_parse(t_elf_file *file)
 		i++;
 	}
 	write(1, "\n", 1);
+	*/
 }

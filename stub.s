@@ -5,14 +5,17 @@ section .bss
 
 section .data
     name:   db "poulet", 0
-    file:   db "/proc/self/exe", 0
+    file:   db "./woody", 0
     exec:   db "/proc/self/fd/", 0
+	spac:	db "              "
+	key:    db  "JV2cJGHuQabIPaZg"    ; ta clé (16 octets)
 
 section .text
 	global _start
+	extern _ft_encrypt
 
 _start:
-
+	mov		r15, [rsp + 16]
 	lea		rdi, name
 	xor		rsi, rsi
 	mov		rax, 319
@@ -31,31 +34,25 @@ _start:
 	mov		r9, rax
 
 .read_loop:
+	mov		rsi, buffer
 	xor		rax, rax
 	mov		rdi, r9
-	mov		rsi, buffer
 	mov		rdx, 10
 	syscall
 	test	rax, rax
 	jz		.done_read
 	js		.error
 
+	mov		rsi, buffer
 	mov		rdx, rax
 	mov		rdi, r8
-	mov		rsi, buffer
 	mov		rax, 1
 	syscall
-
-
-
 	jmp		.read_loop
 .done_read:
 
-
-
-
-	mov rax, [rsp]         ; rax = argc
-	cmp	rax, 2
+	mov rax, [rsp]
+	cmp	rax, 1
 	jle	.no_shift
 
 	mov	rcx, rax
@@ -64,7 +61,8 @@ _start:
 	mov		r10, rax
 	lea rsi, [rsp + r10]
 	mov	r11, [rsp + r10]
-	mov	qword	[rsi], 0
+	mov		rdi, 0
+	mov		[rsi], rdi
 .looping:
 	sub		r10, 8
 	lea rsi, [rsp + r10]
@@ -77,12 +75,8 @@ _start:
 .no_shift:
 
 	lea rsi, [rsp + 8]
-
-
-	;r8
 	mov		rax, r8
 	xor		rcx, rcx
-	; divise rax par 10: quotient dans rax, reste dans rdx
 
 .convert_fd:
 	xor		rdx, rdx
@@ -93,24 +87,124 @@ _start:
 	inc		rcx
 	test	rax, rax
 	jnz		.convert_fd
-	mov		rdi, exec
+
+	; HERE
+
+	mov		r11, exec
+
+	mov		rdi, r11
+
 	add		rdi, 14
 .looping_convert:
 	pop		rdx
 	mov		[rdi], dl
 	inc		rdi
 	loop	.looping_convert
-	mov		byte [rdi], 0
+	xor		r10, r10
+	mov		[rdi], r10b
 
-	mov rax, [rsp]         ; rax = argc
+
+
+	push	r8
+	push	rsi
+	push	r11
+
+    mov     rax, 0x4010        ; valeur little-endian sur 8 octets
+    push    rax
+    lea     rsi, [rsp]
+
+    mov     rdx, 8
+    mov     rdi, r8
+    mov     r10, 0x18
+    xor     r8, r8
+
+    mov     rax, 18
+   	syscall
+
+
+
+	pop     rax
+	pop		r11
+	pop		rsi
+	pop		r8
+
+
+
+
+	mov		r12, r8
+	mov		r13, r11
+
+	push	rsi
+
+	sub     rsp, 438
+
+    mov     rdi, r8
+    lea     rsi, [rsp]
+    mov     rdx, 438
+    mov     r10, 4224
+    xor     r8, r8
+    mov     rax, 17
+    syscall
+
+
+
+    lea     rdi, [rsp]
+    mov     rsi, r15
+    mov     rdx, 438
+
+
+    xor     r8, r8
+    xor     r9, r9
+
+.loopa:
+    cmp     r8, rdx
+    je      .fi
+
+    mov     r10b, byte [rsi + r9]
+    mov     r11b, byte [rdi + r8]
+    xor     r11b, r10b
+    mov     byte [rdi + r8], r11b
+
+    inc     r8
+    inc     r9
+    cmp     r9, 16
+    jne     .loopa
+
+    xor     r9, r9
+    jmp     .loopa
+
+.fi:
+
+
+
+    mov     rdi, r12
+    lea     rsi, [rsp]
+    mov     rdx, 438
+    mov     r10, 4224
+    xor     r8, r8
+    mov     rax, 18
+	syscall
+
+
+	add     rsp, 438
+	pop		rsi
+
+	mov		r11, r13
+
+
+	mov rax, [rsp]
 	mov rcx, rax
-	add rcx, 2             ; rcx = argc + 2
-	shl rcx, 3             ; rcx = 8 * (argc + 2)
-	lea rdx, [rsp+rcx]     ; r13 pointe sur envp
+	add rcx, 2
+	shl rcx, 3
+	lea rdx, [rsp+rcx]
+	mov		rdi, r11
 	mov		rax, 59
-	mov		rdi, exec
 	syscall
 	mov		r10, rax
+
+
+
+
 
 	mov		rax, 3
 	mov		rdi, r8
@@ -122,6 +216,7 @@ _start:
 	mov		rdi, r10
 	mov		rax, 60
 	syscall
+
 
 .error:
 	mov		rdi, 1

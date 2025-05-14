@@ -13,16 +13,16 @@
 section .text
     global _ft_encrypt
 
-; void xor_crypt(unsigned char *data, char *key, size_t size_data, size_t size_key)
+; void xor_crypt(unsigned char *data, unsigned char *key, size_t size_data, size_t size_key)
 ; data = rdi
 ; key = rsi
 ; size_data = rdx
 ; size_key = rcx
 
 _ft_encrypt:
+
     xor     r8, r8          ; i = 0
     xor     r9, r9          ; j = 0
-
 .loop:
     cmp     r8, rdx
     je      .end

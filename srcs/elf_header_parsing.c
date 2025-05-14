@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   elf_header_parsing.c                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: Zerrino <Zerrino@student.42.fr>            +#+  +:+       +#+        */
+/*   By: alexafer <alexafer@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:53:13 by Zerrino           #+#    #+#             */
-/*   Updated: 2025/04/06 18:26:51 by Zerrino          ###   ########.fr       */
+/*   Updated: 2025/05/14 03:42:42 by alexafer         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,7 +75,7 @@ void	ft_elf64(t_elf_file *file)
 		(sizeof(Elf64_Phdr *) * file->elf64_ehdr->e_phnum);
 	if (!file->elf64_phdr)
 		return ;
-	printf("nombre de program header : %d\n", file->elf64_ehdr->e_phnum);
+	//printf("nombre de program header : %d\n", file->elf64_ehdr->e_phnum);
 	elf64_phdr_parse(file);
 	file->offset = file->elf64_ehdr->e_shoff;
 	elf64_shdr_parse(file);
