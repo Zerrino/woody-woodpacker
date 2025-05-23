@@ -73,7 +73,7 @@ void	mapping_file(t_elf_file *file)
 		file->error = 1;
 		return ;
 	}
-	file->file_map = mmap(NULL, file->file_len + 66, PROT_READ | PROT_WRITE,
+	file->file_map = mmap(NULL, file->file_len + 100, PROT_READ | PROT_WRITE,
 			MAP_PRIVATE, fd_out, 0);
 	close(fd_out);
 	if (file->file_map == MAP_FAILED)

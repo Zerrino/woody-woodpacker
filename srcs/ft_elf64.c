@@ -12,23 +12,6 @@
 
 #include "../includes/ft_nm.h"
 
-Elf64_Xword compute_p_align(Elf64_Addr vaddr, Elf64_Off offset)
-{
-	Elf64_Xword align = 0x1000;
-	const Elf64_Xword max_align = (1ULL << 24); // 16MB max align (sécurité)
-
-	while ((vaddr % align) != (offset % align))
-	{
-		align <<= 1;
-		if (align > max_align)
-		{
-			fprintf(stderr, "❌ Impossible de trouver un alignement commun entre vaddr=0x%lx et offset=0x%lx\n", vaddr, offset);
-			return 0x1000; // ou retourne 0x1000 par défaut
-		}
-	}
-	return align;
-}
-
 static int	parse_section_headers(t_elf_file *file, int *sym_link)
 {
 	int	i;
@@ -37,7 +20,7 @@ static int	parse_section_headers(t_elf_file *file, int *sym_link)
 
 	sym_index = -1;
 	i = 0;
-	file->offset = file->elf64_ehdr->e_shoff;
+	file->offset = file->elf64_ehdr->e_shoff + 64;
 	while (i < file->elf64_ehdr->e_shnum)
 	{
 		elf_set(file, file->elf64_ehdr->e_shentsize , (void **)&file->elf64_shdr[i], 0);
@@ -55,10 +38,10 @@ static int	parse_section_headers(t_elf_file *file, int *sym_link)
 		name = (file->elf64_shdr[i]->sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr->e_shstrndx]->sh_offset);
 		if (ft_strcmp(name , ".text") == 0 && ft_strlen(".text") == 5)
 		{
-			//printf("Name[%d] : %s\n",i, file->elf64_shdr[i]->sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr->e_shstrndx]->sh_offset);
-			file->elf64_shdr_text = *file->elf64_shdr[i];
+			printf("Name[%d] : %s\n",i, file->elf64_shdr[i]->sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr->e_shstrndx]->sh_offset + 64);
+			file->elf64_shdr_text = *(file->elf64_shdr[i] + 64);
 		}
-		//printf("Name[%d] : %s\n",i, file->elf64_shdr[i]->sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr->e_shstrndx]->sh_offset);
+		printf("Name[%d] : %s\n",i, file->elf64_shdr[i]->sh_name + file->file_map + file->elf64_shdr[file->elf64_ehdr->e_shstrndx]->sh_offset + 64);
 		i++;
 	}
 	return (sym_index);
@@ -89,27 +72,27 @@ void	elf64_phdr_parse(t_elf_file *file)
 {
 	parse_program_headers(file);
 	file->offset_insert = file->elf64_ehdr->e_phoff + file->elf64_ehdr->e_phentsize * file->elf64_ehdr->e_phnum;
-	//char salut[56];
+	char salut[64];
 
-	//ft_memset(salut, '0', 56);
-	//printf("offset to insert : %ld\n", file->offset_insert);
-	//insert_bytes(file, salut, file->offset_insert, 0x38, file->file_len + 0x38);
-	//printf("test : %d %d\n", file->elf64_phdr[0]->p_type, 0);
+	ft_memset(salut, '0', 64);
+	printf("offset to insert : %ld\n", file->offset_insert);
+	insert_bytes(file, salut, file->offset_insert, 64, file->file_len + 64);
+	printf("test : %d %d\n", file->elf64_phdr[0]->p_type, 0);
+	elf64_shdr_parse(file);
 }
 
 void	elf64_shdr_parse(t_elf_file *file)
 {
-	//int			i;
+	int			i;
 	int			sym_link;
-	//char		*start;
+	char		*start;
 	if (!check_shdr_bounds(file))
 		return ;
 	parse_section_headers(file, &sym_link);
-	//printf("offset : %ld, size : %ld\n", file->elf64_shdr_text.sh_offset, file->elf64_shdr_text.sh_size);
-	//start = (void *)(file->file_map + file->elf64_shdr_text.sh_offset);
+	printf("offset : %ld, size : %ld\n", file->elf64_shdr_text.sh_offset, file->elf64_shdr_text.sh_size);
+	start = (void *)(file->file_map + file->elf64_shdr_text.sh_offset);
 	file->text_offset = file->elf64_shdr_text.sh_offset;
 	file->text_size = file->elf64_shdr_text.sh_size;
-	/*
 	i = 0;
 	ft_putnbr_fd(0, 1);
 	write(1, "  : ", 4);
@@ -128,5 +111,4 @@ void	elf64_shdr_parse(t_elf_file *file)
 		i++;
 	}
 	write(1, "\n", 1);
-	*/
 }

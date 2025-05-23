@@ -11,8 +11,8 @@
 /* ************************************************************************** */
 
 #include "../includes/ft_nm.h"
-#include <assert.h>
 #include <string.h>
+#include <inttypes.h>
 
 void print_segment_type(uint32_t p_type)
 {
@@ -36,51 +36,11 @@ void print_segment_type(uint32_t p_type)
     }
 }
 
-void create_load_segment_header(Elf64_Phdr *ph, uint64_t file_off, uint64_t size, uint64_t vbase)
+int is_pie(t_elf_file *file)
 {
-    // Définition du type du segment : chargement
-    ph->p_type   = PT_LOAD;
-
-    // Définition des flags : ici, lecture et écriture (modifiable selon vos besoins)
-    ph->p_flags  = PF_R | PF_W;
-
-    // Le segment commencera à l'offset fourni, c'est-à-dire à la fin du fichier
-    ph->p_offset = file_off;
-
-    // Calcul de l'adresse virtuelle : la base virtuelle plus l’offset
-    ph->p_vaddr  = vbase + file_off;
-
-    // Dans un contexte simple, l'adresse physique est la même que l'adresse virtuelle
-    ph->p_paddr  = ph->p_vaddr;
-
-    // La taille dans le fichier et en mémoire est définie à 'size' (ici 10)
-    ph->p_filesz = size;
-    ph->p_memsz  = size;
-
-    // Alignement du segment : par exemple, au niveau d'une taille de page classique (4096 octets)
-    ph->p_align  = 0x1000;
-}
-
-void print_segment_flags(unsigned int p_flags)
-{
-	printf("  Flags: 0x%x (", p_flags);
-
-	int first = 1;
-	if (p_flags & PF_R) {
-		printf("READ");
-		first = 0;
-	}
-	if (p_flags & PF_W) {
-		if (!first) printf(" | ");
-		printf("WRITE");
-		first = 0;
-	}
-	if (p_flags & PF_X) {
-		if (!first) printf(" | ");
-		printf("EXECUTE");
-	}
-
-	printf(")\n");
+    if (file->elf64_ehdr->e_type == 2)
+        return (1);
+    return (0);
 }
 
 void	elf64_hdr_change(t_elf_file *file)
@@ -95,7 +55,11 @@ void	elf64_shdr_change(t_elf_file *file)
 	i = 0;
 	while (i < file->elf64_ehdr->e_shnum)
 	{
-
+        if (file->elf64_shdr[i]->sh_offset >= file->offset_insert)
+        {
+            file->elf64_shdr[i]->sh_addr += 64;
+            file->elf64_shdr[i]->sh_offset += 64;
+        }
 		//ft_memset(file->elf64_shdr[i], '\0', sizeof(Elf64_Shdr));
 		i++;
 	}
@@ -140,34 +104,429 @@ void generate_key(unsigned char *key, size_t size)
     }
 }
 
+void check_phdr_align(const t_elf_file *file)
+{
+    uint16_t phnum = file->elf64_ehdr->e_phnum;
+
+    puts("=== Vérification p_vaddr ≡ p_offset (mod p_align) ===");
+    for (uint16_t i = 0; i < phnum; ++i) {
+        const Elf64_Phdr *ph = file->elf64_phdr[i];
+
+        uint64_t align      = ph->p_align ? ph->p_align : 1;   /* align==0 → 1 */
+        uint64_t vaddr_mod  = ph->p_vaddr  % align;
+        uint64_t offset_mod = ph->p_offset % align;
+        int      ok         = (vaddr_mod == offset_mod);
+
+        printf("PHDR %-3u │ p_vaddr=%-12" PRIu64
+               " p_offset=%-12" PRIu64
+               " p_align=%-6" PRIu64
+               " │ vaddr%%align=%-3" PRIu64
+               " offset%%align=%-3" PRIu64
+               " │ %s\n",
+               i,
+               ph->p_vaddr,
+               ph->p_offset,
+               align,
+               vaddr_mod,
+               offset_mod,
+               ok ? "OK" : "ERREUR");
+    }
+    puts("====================================================");
+}
+
+
+const char *get_dynamic_tag_name(uint64_t tag) {
+    switch (tag) {
+        case DT_NEEDED: return "NEEDED";
+        case DT_INIT: return "INIT";
+        case DT_FINI: return "FINI";
+        case DT_INIT_ARRAY: return "INIT_ARRAY";
+        case DT_INIT_ARRAYSZ: return "INIT_ARRAYSZ";
+        case DT_FINI_ARRAY: return "FINI_ARRAY";
+        case DT_FINI_ARRAYSZ: return "FINI_ARRAYSZ";
+        case DT_GNU_HASH: return "GNU_HASH";
+        case DT_STRTAB: return "STRTAB";
+        case DT_SYMTAB: return "SYMTAB";
+        case DT_STRSZ: return "STRSZ";
+        case DT_SYMENT: return "SYMENT";
+        case DT_DEBUG: return "DEBUG";
+        case DT_PLTGOT: return "PLTGOT";
+        case DT_RELA: return "RELA";
+        case DT_RELASZ: return "RELASZ";
+        case DT_RELAENT: return "RELAENT";
+        case DT_FLAGS_1: return "FLAGS_1";
+        case DT_VERNEED: return "VERNEED";
+        case DT_VERNEEDNUM: return "VERNEEDNUM";
+        case DT_VERSYM: return "VERSYM";
+        case DT_RELACOUNT: return "RELACOUNT";
+        case DT_JMPREL: return "JMPREL";
+        case DT_NULL: return "NULL";
+        default: return "UNKNOWN";
+    }
+}
+
+
+int tag_points_to_memory(uint64_t tag) {
+    switch (tag) {
+        case DT_INIT:
+        case DT_FINI:
+        case DT_INIT_ARRAY:
+        case DT_FINI_ARRAY:
+        case DT_GNU_HASH:
+        case DT_STRTAB:
+        case DT_SYMTAB:
+        case DT_PLTGOT:
+        case DT_RELA:
+        case DT_VERNEED:
+        case DT_VERSYM:
+        case DT_JMPREL:
+            return 1;  // Tous ces tags pointent vers une adresse virtuelle (section .text/.data/.dynstr/etc.)
+
+        case DT_NEEDED:
+        case DT_INIT_ARRAYSZ:
+        case DT_FINI_ARRAYSZ:
+        case DT_STRSZ:
+        case DT_SYMENT:
+        case DT_RELASZ:
+        case DT_RELAENT:
+        case DT_FLAGS_1:
+        case DT_VERNEEDNUM:
+        case DT_RELACOUNT:
+        case DT_DEBUG:
+        case DT_NULL:
+            return 0;  // Ce sont des valeurs entières, tailles, compteurs, flags, etc.
+
+        default:
+            return 0;  // Par défaut, on considère que c’est une valeur immédiate
+    }
+}
+
+void print_dynamic_segment(t_elf_file *file, const Elf64_Phdr *phdr) {
+    if (phdr->p_type != PT_DYNAMIC)
+        return;
+
+    Elf64_Dyn *dyn = (Elf64_Dyn *)(file->file_map + phdr->p_offset);
+    size_t count = phdr->p_filesz / sizeof(Elf64_Dyn);
+
+    printf("Dynamic section at offset 0x%lx contains %zu entries:\n", phdr->p_offset, count);
+    printf("  Tag        Type                         Name/Value\n");
+
+    for (size_t i = 0; i < count; i++) {
+        uint64_t tag = dyn[i].d_tag;
+        const char *name = get_dynamic_tag_name(tag);
+
+        if (tag == DT_NEEDED) {
+            // Pas de .dynstr ici → print brut
+            printf("  0x%016lx (%-27s) Shared library: 0x%lx\n", tag, name, dyn[i].d_un.d_val);
+        } else {
+            printf("  0x%016lx (%-27s) 0x%lx\n", tag, name, dyn[i].d_un.d_val);
+            if (dyn[i].d_un.d_val >= file->offset_insert && tag_points_to_memory(tag))
+            {
+                dyn[i].d_un.d_val += 64;
+                printf("Augmenter\n");
+            }
+        }
+
+        if (tag == DT_NULL)
+            break;
+    }
+}
+
+
+static Elf64_Off virt_to_off(t_elf_file *f, Elf64_Addr v)
+{
+    for (int i = 0; i < f->elf64_ehdr->e_phnum; i++) {
+        Elf64_Phdr *ph = f->elf64_phdr[i];
+        if (ph->p_type != PT_LOAD) continue;
+        if (v >= ph->p_vaddr && v < ph->p_vaddr + ph->p_filesz)
+            return ph->p_offset + (v - ph->p_vaddr);
+    }
+    return 0;          /* should not happen → sanity check ailleurs */
+}
+
+/* — patch proprement dit ------------------------------------------------ */
+
+static void patch_got_jump_slots(t_elf_file *f,
+                                 Elf64_Addr pltgot_va,
+                                 size_t     jmprel_sz,
+                                 size_t     delta,
+                                 Elf64_Addr insert_va)
+{
+    /* 1) Où est le tableau GOT/PLTGOT dans le fichier ? */
+    Elf64_Off  got_off = virt_to_off(f, pltgot_va);
+    Elf64_Xword *got   = (Elf64_Xword *)(f->file_map + got_off);
+
+    /* 2) Nombre d’entrées JUMP_SLOT   (→ 3 premières entrées réservées)   */
+    size_t n_slots = jmprel_sz / sizeof(Elf64_Rela);
+
+    for (size_t i = 3; i < 3 + n_slots; i++)           /* skip 0,1,2       */
+    {
+        if (got[i] >= insert_va)       /* le stub PLT qu’on pointe a bougé */
+            got[i] += delta;           /* même delta que le stub           */
+    }
+}
+
+
+static int reloc_addend_is_addr(uint32_t type)
+{
+    switch (type) {
+        case R_X86_64_RELATIVE:
+        case R_X86_64_64:
+        case R_X86_64_COPY:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+static void patch_pointer_array(t_elf_file *f,
+                                Elf64_Addr  array_va,
+                                size_t      bytes,
+                                Elf64_Addr  insert_va,
+                                size_t      delta)
+{
+    if (!array_va || !bytes) return;
+
+    Elf64_Addr *tab = (Elf64_Addr *)(f->file_map + virt_to_off(f, array_va));
+    size_t n = bytes / sizeof(Elf64_Addr);
+
+    for (size_t i = 0; i < n; i++)
+        if (tab[i] >= insert_va)
+            tab[i] += delta;
+}
+
+static void patch_rela_table(t_elf_file *f,
+                             Elf64_Addr rela_va,
+                             size_t     size,
+                             size_t     entsz,
+                             Elf64_Addr insert_va,
+                             size_t     delta)
+{
+    if (!rela_va || !size) return;
+
+    Elf64_Rela *rela = (Elf64_Rela *)(f->file_map + virt_to_off(f, rela_va));
+    size_t count = size / entsz;
+
+    for (size_t i = 0; i < count; i++) {
+        Elf64_Rela *r = &rela[i];
+
+        if (r->r_offset >= insert_va)
+            r->r_offset += delta;
+
+        if (reloc_addend_is_addr(ELF64_R_TYPE(r->r_info))
+            && (Elf64_Addr)r->r_addend >= insert_va)
+            r->r_addend += delta;
+    }
+}
+
+
+
+
+static void patch_dynsym(t_elf_file *f,
+                         Elf64_Addr insert_va,
+                         size_t     delta,
+                         Elf64_Off  dynsym_off,
+                         size_t     dynsym_size)
+{
+    Elf64_Sym *sym = (Elf64_Sym *)(f->file_map + dynsym_off);
+    size_t      n = dynsym_size / sizeof(Elf64_Sym);
+
+    for (size_t i = 0; i < n; i++)
+        if (sym[i].st_value >= insert_va && sym[i].st_shndx != SHN_UNDEF)
+            sym[i].st_value += delta;
+}
+
+void elf64_reloc_fix(t_elf_file *file, Elf64_Off insert_off, size_t delta)
+{
+    /* 1) -- Trouver le PT_DYNAMIC ---------------------------------------- */
+    Elf64_Addr insert_va = 0;        /* virtaddr correspondant à insert_off */
+
+    for (int i = 0; i < file->elf64_ehdr->e_phnum; i++) {
+        Elf64_Phdr *ph = file->elf64_phdr[i];
+        if (insert_off >= ph->p_offset &&
+            insert_off <  ph->p_offset + ph->p_filesz)
+        {
+            insert_va = ph->p_vaddr + (insert_off - ph->p_offset);
+            break;
+        }
+    }
+    Elf64_Phdr *dyn_ph = NULL;
+    for (int i = 0; i < file->elf64_ehdr->e_phnum; i++) {
+        if (file->elf64_phdr[i]->p_type == PT_DYNAMIC) {
+            dyn_ph = file->elf64_phdr[i];
+            break;
+        }
+    }
+    if (!dyn_ph) {
+        fprintf(stderr, "Pas de segment PT_DYNAMIC trouvé.\n");
+        return;
+    }
+
+    Elf64_Dyn *dyn  = (Elf64_Dyn *)(file->file_map + dyn_ph->p_offset);
+    size_t     dcnt = dyn_ph->p_filesz / sizeof(Elf64_Dyn);
+
+    /* 2) -- Récupérer les adresses/sizes des tables ----------------------- */
+    Elf64_Addr rela_addr = 0, jmprel_addr = 0;
+    size_t     rela_size = 0, jmprel_size = 0, rela_ent = sizeof(Elf64_Rela);
+    Elf64_Addr init_arr = 0, fini_arr = 0;
+    size_t     init_sz  = 0, fini_sz = 0;
+    Elf64_Addr symtab_va = 0, strtab_va = 0;
+    //size_t     syment    = sizeof(Elf64_Sym);
+
+    for (size_t i = 0; i < dcnt; i++) {
+        switch (dyn[i].d_tag) {
+        case DT_RELA:      rela_addr     = dyn[i].d_un.d_ptr; break;
+        case DT_RELASZ:    rela_size     = dyn[i].d_un.d_val; break;
+        case DT_RELAENT:   rela_ent      = dyn[i].d_un.d_val; break;
+
+        case DT_JMPREL:    jmprel_addr   = dyn[i].d_un.d_ptr; break;
+        case DT_PLTRELSZ:  jmprel_size   = dyn[i].d_un.d_val; break;
+
+        case DT_INIT_ARRAY:   init_arr = dyn[i].d_un.d_ptr; break;
+        case DT_INIT_ARRAYSZ: init_sz  = dyn[i].d_un.d_val; break;
+        case DT_FINI_ARRAY:   fini_arr = dyn[i].d_un.d_ptr; break;
+        case DT_FINI_ARRAYSZ: fini_sz  = dyn[i].d_un.d_val; break;
+
+        case DT_SYMTAB:  symtab_va = dyn[i].d_un.d_ptr; break;
+        case DT_STRTAB:  strtab_va = dyn[i].d_un.d_ptr; break;
+
+        case DT_NULL:      i = dcnt; break;   /* fin de table */
+        default:           break;
+        }
+    }
+    size_t dynsym_size = 0;
+    if (symtab_va && strtab_va && strtab_va > symtab_va)
+        dynsym_size = strtab_va - symtab_va;
+    if (dynsym_size)
+        patch_dynsym(file,
+                    insert_va,                 /* VA où tu as inséré 0x40 */
+                    delta,                     /* 0x40 dans ton cas      */
+                    virt_to_off(file, symtab_va),
+                    dynsym_size);
+    /* 3) -- Patch des relocations ---------------------------------------- */
+
+    patch_pointer_array(file, init_arr, init_sz,  insert_va, delta);
+    patch_pointer_array(file, fini_arr, fini_sz,  insert_va, delta);
+    patch_rela_table(file, rela_addr,   rela_size,   rela_ent,
+                     insert_va, delta);
+    patch_rela_table(file, jmprel_addr, jmprel_size, rela_ent,
+                     insert_va, delta);
+    Elf64_Addr pltgot_addr = 0;
+    /* on connaît déjà jmprel_addr / jmprel_size */
+
+    for (size_t i = 0; i < dcnt; i++) {
+        switch (dyn[i].d_tag) {
+            case DT_PLTGOT:  pltgot_addr  = dyn[i].d_un.d_ptr; break;
+            /* … comme avant … */
+        }
+    }
+
+    /* 3b) -- Patch du contenu GOT pour tous les JUMP_SLOT ------------- */
+    if (pltgot_addr && jmprel_size)
+        patch_got_jump_slots(file,
+                             pltgot_addr,
+                             jmprel_size,
+                             delta,
+                             insert_va);
+
+    Elf64_Addr got_va = 0;
+
+    //Elf64_Dyn *dyn = ...;         /* déjà récupéré dans elf64_reloc_fix */
+    for (size_t i = 0; dyn[i].d_tag != DT_NULL; i++)
+        if (dyn[i].d_tag == DT_PLTGOT)
+            got_va = dyn[i].d_un.d_ptr;
+
+    if (!got_va) return;          /* improbable mais… */
+
+    Elf64_Addr *got0 = (Elf64_Addr *)(file->file_map + virt_to_off(file, got_va));
+
+    if (got0[0] >= insert_va)     /* l’ancienne valeur pointe après l’insert → patch */
+        got0[0] += delta;
+}
+
+
+
 void elf64_phdr_change(t_elf_file *file)
 {
     int i;
     Elf64_Phdr *target_phdr = NULL;
     Elf64_Off max_end = 0;
-    for (i = 0; i < file->elf64_ehdr->e_phnum; i++)
+    //check_phdr_align(file);
+    if (is_pie(file))
     {
-        file->elf64_phdr[i]->p_flags |= 0x7;
-        if (file->elf64_phdr[i]->p_type == PT_LOAD)
+        printf("Is no-pie !\n");
+        for (i = 0; i < file->elf64_ehdr->e_phnum; i++)
         {
-            Elf64_Off end = file->elf64_phdr[i]->p_offset + file->elf64_phdr[i]->p_filesz;
-            if (end > max_end)
+            print_segment_type(file->elf64_phdr[i]->p_type);
+            if (file->elf64_phdr[i]->p_offset >= file->offset_insert)
             {
-                max_end = end;
-                target_phdr = file->elf64_phdr[i];
+                //file->elf64_phdr[i]->p_align
+
+                if (file->elf64_phdr[i]->p_type == PT_LOAD)
+                {
+                    file->elf64_phdr[i]->p_offset += 64;
+                    if (file->elf64_phdr[i]->p_align >= 64)
+                        file->elf64_phdr[i]->p_align = 64;
+                }
+                //file->elf64_phdr[i]->p_vaddr += 64;
+                //file->elf64_phdr[i]->p_paddr += 64;
+                //file->elf64_phdr[i]->p_offset += 64;
+            }
+            if (file->elf64_phdr[i]->p_type == PT_DYNAMIC)
+            {
+                print_dynamic_segment(file, file->elf64_phdr[i]);
+            }
+            if (file->elf64_phdr[i]->p_offset == 0)
+            {
+                printf("ICI!\n");
+                file->elf64_phdr[i]->p_filesz += 64;
+                file->elf64_phdr[i]->p_memsz += 64;
             }
         }
+        elf64_reloc_fix(file, file->offset_insert, 64);
     }
-
-    if (!target_phdr)
+    else
     {
-        fprintf(stderr, "Aucun segment LOAD trouvé\n");
-        return;
+        printf("Is pie !\n");
+        for (i = 0; i < file->elf64_ehdr->e_phnum; i++)
+        {
+            print_segment_type(file->elf64_phdr[i]->p_type);
+            if (file->elf64_phdr[i]->p_offset >= file->offset_insert)
+            {
+                file->elf64_phdr[i]->p_vaddr += 64;
+                file->elf64_phdr[i]->p_paddr += 64;
+                file->elf64_phdr[i]->p_offset += 64;
+            }
+            if (file->elf64_phdr[i]->p_type == PT_DYNAMIC)
+            {
+                print_dynamic_segment(file, file->elf64_phdr[i]);
+            }
+            if (file->elf64_phdr[i]->p_type == PT_LOAD)
+            {
+                if (file->elf64_phdr[i]->p_offset == 0)
+                {
+                    printf("I : %d\n", i);
+                    file->elf64_phdr[i]->p_filesz += 64;
+                    file->elf64_phdr[i]->p_memsz += 64;
+                }
+                Elf64_Off end = file->elf64_phdr[i]->p_offset + file->elf64_phdr[i]->p_filesz;
+                if (end > max_end)
+                {
+                    max_end = end;
+                    target_phdr = file->elf64_phdr[i];
+                }
+            }
+        }
+        if (!target_phdr)
+        {
+            fprintf(stderr, "Aucun segment LOAD trouvé\n");
+            return;
+        }
+        elf64_reloc_fix(file, file->offset_insert, 64);
+        target_phdr->p_flags |= PF_X;
     }
-    target_phdr->p_flags |= PF_X;
-    off_t stub_offset = max_end;
-
-
+    //off_t stub_offset = max_end;
+    check_phdr_align(file);
 
 
 
@@ -177,27 +536,8 @@ void elf64_phdr_change(t_elf_file *file)
     write(1, key, 16);
     write(1, "\n", 1);
 
-    _ft_encrypt((unsigned char *)(file->file_map + file->text_offset), key, file->text_size, sizeof(key));
-    //_ft_encrypt((unsigned char *)(file->file_map + 1), key, 10, sizeof(key));
+    //_ft_encrypt((unsigned char *)(file->file_map + file->text_offset), key, file->text_size, sizeof(key));
 
-    //write(1, file->file_map, 4);
-    //printf("\nfile->test_offset : %ld\n", file->text_offset);
-    //printf("file->test_offset : %ld\n", file->text_size);
-    //
-
-    //_ft_encrypt((char *)(file->file_map + file->text_offset), (char *)key, file->text_size, sizeof(key));
-
-// offset : 4288 -> 0x10c0 , size : 501069 -> 0x7a54d
-
-
-// fichier : 778256 -> 0xbe010
-
-
-
-
-
-
-    // A B C D E F
 
     unsigned char stub[] = {
         // mov		r15, [rsp + 16] donc argc[1]
@@ -458,14 +798,18 @@ void elf64_phdr_change(t_elf_file *file)
         }
     }
 
-    Elf64_Addr stub_vaddr = (target_phdr->p_vaddr + (stub_offset - target_phdr->p_offset));
-    ft_memcpy(file->file_map + stub_offset, stub, sizeof(stub));
-    if ((long unsigned int)file->file_len < (stub_offset + sizeof(stub)))
-        file->file_len = stub_offset + sizeof(stub);
-    target_phdr->p_filesz += sizeof(stub);
-    target_phdr->p_memsz  += sizeof(stub);
-    (void)stub_vaddr;
-    file->elf64_ehdr->e_entry = stub_vaddr;
+    //Elf64_Addr stub_vaddr = (target_phdr->p_vaddr + (stub_offset - target_phdr->p_offset));
+    //ft_memcpy(file->file_map + stub_offset, stub, sizeof(stub));
+    //if ((long unsigned int)file->file_len < (stub_offset + sizeof(stub)))
+    //    file->file_len = stub_offset + sizeof(stub);
+    //target_phdr->p_filesz += 4096;
+    //target_phdr->p_memsz  += 4096;
+    //(void)stub_vaddr;
+    if (is_pie(file))
+        printf("Is no-pie !\n");
+    else
+        file->elf64_ehdr->e_entry += 64;
+    file->elf64_ehdr->e_shoff += 64;
 }
 
 

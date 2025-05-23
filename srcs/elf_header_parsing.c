@@ -77,8 +77,9 @@ void	ft_elf64(t_elf_file *file)
 		return ;
 	//printf("nombre de program header : %d\n", file->elf64_ehdr->e_phnum);
 	elf64_phdr_parse(file);
-	file->offset = file->elf64_ehdr->e_shoff;
+	file->offset = file->elf64_ehdr->e_shoff + 64;
 	elf64_shdr_parse(file);
+	printf("he\n");
 	elf64_woody(file);
 	//ft_free_all(file);
 }
